@@ -1,0 +1,7 @@
+/vendor
+/node_modules
+/public/build
+/.env
+/storage/app/*.json
+/storage/logs/*.log
+/.phpunit.result.cache
