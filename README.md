@@ -34,7 +34,7 @@ docker compose up -d worker scheduler
 docker compose exec app php artisan finance:create-admin seu-email@exemplo.com "Seu nome"
 ```
 
-Acesse: **http://localhost:8088**. Sem registro público: novas contas de acesso são criadas pelo comando interativo.
+Acesse: **http://localhost:8088**. Novas contas podem ser criadas em `/registrar` (nome, e-mail, CPF e senha) ou pelo comando interativo. Cada usuário vê apenas os próprios dados; ao cadastrar uma pessoa com o CPF de outro usuário, ele recebe um convite para acompanhar (somente leitura) os lançamentos em seu nome.
 
 **Observação:** para a primeira carga, rode as migrations antes de liberar o worker/scheduler se você já ativou a integração do Google.
 

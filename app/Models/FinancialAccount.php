@@ -3,4 +3,4 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-class FinancialAccount extends Model {use HasUuids,SoftDeletes;protected $fillable=['name','type','opening_balance_cents'];}
+class FinancialAccount extends Model {use HasUuids,SoftDeletes,BelongsToUser;protected $fillable=['name','type','opening_balance_cents'];}

@@ -1,7 +1,8 @@
 <?php
 namespace App\Console\Commands;
 use App\Models\{Person,Transaction};
-use App\Services\{InstallmentService,Audit};
+use App\Services\{Accounts,InstallmentService,Audit};
+use App\Support\Tenant;
 use Carbon\Carbon;
 use Google\Client;
 use Google\Service\Sheets;
@@ -28,6 +29,8 @@ class ImportLegacy extends Command {
  public function handle():int{
   $id=config('services.google_sheets.spreadsheet_id');$credentials=config('services.google_sheets.credentials');
   if(!$id||!is_readable($credentials)){$this->error('Configure GOOGLE_SHEETS_ID e credenciais.');return self::FAILURE;}
+  $owner=Accounts::sheetOwner();if(!$owner){$this->error('Crie um usuário antes de importar.');return self::FAILURE;}
+  Tenant::set($owner->id);
   $c=new Client();$c->setAuthConfig($credentials);$c->addScope(Sheets::SPREADSHEETS_READONLY);$s=new Sheets($c);
   $rows=$s->spreadsheets_values->get($id,"'Lançamentos'!A3:E",['valueRenderOption'=>'UNFORMATTED_VALUE','dateTimeRenderOption'=>'SERIAL_NUMBER'])->getValues()??[];
   $count=0;$skipped=0;
@@ -35,7 +38,7 @@ class ImportLegacy extends Command {
    if(!$name||!$description||!is_numeric($amount)||$amount<=0){$skipped++;continue;}
    try{$start=$this->parseDate($date)->startOfMonth()->format('Y-m-d');}catch(\Throwable $e){$skipped++;$this->warn('Data inválida na linha '.($i+3));continue;}
    $uuid=Uuid::uuid5('6ba7b810-9dad-11d1-80b4-00c04fd430c8',$id.':legacy:'.($i+3))->toString();
-   if(Transaction::withTrashed()->whereKey($uuid)->exists()){$skipped++;continue;}
+   if(Transaction::withTrashed()->withoutGlobalScope('owner')->whereKey($uuid)->exists()){$skipped++;continue;}
    if(!$this->option('dry-run'))DB::transaction(function()use($name,$description,$amount,$quantity,$start,$uuid){$person=Person::firstOrCreate(['name'=>$name]);$t=new Transaction();$t->id=$uuid;$t->fill(['person_id'=>$person->id,'description'=>$description,'amount_cents'=>(int)round((float)$amount*100),'installments_count'=>max(1,$quantity),'start_month'=>$start,'type'=>'expense','payment_method'=>'other','origin'=>'legacy']);$t->save();app(InstallmentService::class)->rebuild($t);Audit::write('import','transactions',$uuid,null,$t->toArray(),'import');});
    $count++;
   }

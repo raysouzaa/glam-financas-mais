@@ -14,7 +14,7 @@ Tudo roda via Docker Compose (serviços `app` na porta 8088, `worker`, `schedule
 docker compose build && docker compose up -d --force-recreate app worker scheduler
 docker compose exec app php artisan migrate --force
 docker compose exec app php artisan db:seed --force
-docker compose exec app php artisan finance:create-admin email@exemplo.com "Nome"   # sem registro público; a senha é pedida interativamente (mín. 12 caracteres)
+docker compose exec app php artisan finance:create-admin email@exemplo.com "Nome"   # CPF (ou --cpf=) e senha são pedidos interativamente (mín. 12 caracteres); também há registro público em /registrar
 docker compose exec app php artisan finance:sync-sheets                             # roda a sincronização uma vez (o scheduler roda a cada minuto)
 docker compose exec app php artisan finance:import-legacy --dry-run                 # importa a aba original "Lançamentos" A3:E
 docker compose exec app ./vendor/bin/pint                                           # formatação PHP (única ferramenta de dev instalada)
@@ -28,7 +28,14 @@ Ainda não há testes automatizados (nem PHPUnit, nem testes JS).
 
 - **Backend concentrado em poucos arquivos.** As rotas ficam em [routes/web.php](routes/web.php) (caminhos em português: `/cadastros`, `/lancamentos`, `/parcelas`, `/auditoria`), e quase toda a lógica HTTP está em [FinanceController.php](app/Http/Controllers/FinanceController.php). Os cadastros de referência (pessoas, categorias, contas, cartões) usam rotas genéricas `/cadastros/{kind}`, com `kind` mapeado para o model por `model()` e as regras de validação por `fields()`. Para adicionar um cadastro novo, é preciso mexer nesses dois `match`, em `manage()` e no frontend.
 - **Agendamento** fica em [bootstrap/app.php](bootstrap/app.php) (`finance:sync-sheets` a cada minuto, `withoutOverlapping`, e o comando também pega um `Cache::lock`). Não existe `app/Console/Kernel.php`.
-- **Frontend:** [resources/js/app.tsx](resources/js/app.tsx) registra as páginas manualmente em um mapa (`Dashboard`, `Login`, `Manage`, `Audit`), então páginas novas precisam ser adicionadas ali. [Shell.tsx](resources/js/Components/Shell.tsx) contém o layout, a navegação e o helper `money()` (centavos → BRL). A página `Manage.tsx` serve todos os CRUDs, escolhidos pelo parâmetro `?kind=`.
+- **Frontend:** [resources/js/app.tsx](resources/js/app.tsx) registra as páginas manualmente em um mapa (`Dashboard`, `Login`, `Register`, `Manage`, `Audit`), então páginas novas precisam ser adicionadas ali. [Shell.tsx](resources/js/Components/Shell.tsx) contém o layout, a navegação e o helper `money()` (centavos → BRL). A página `Manage.tsx` serve todos os CRUDs, escolhidos pelo parâmetro `?kind=`.
+
+### Isolamento por usuário e compartilhamento por CPF
+
+- **Cada usuário só vê os próprios dados.** `people`, `categories`, `financial_accounts`, `credit_cards` e `transactions` têm `user_id`; os models usam a trait [BelongsToUser](app/Models/BelongsToUser.php) (global scope `owner` + preenchimento de `user_id` na criação), baseada em `Tenant::id()` (usuário logado ou, no console, `Tenant::set()`). Queries cruas com `DB::table()` (dashboard, auditoria) **não** passam pelo scope e precisam filtrar na mão. Regras `exists`/`unique` também devem filtrar por `user_id`.
+- Usuários são criados sempre por `Accounts::create()` (registro em `/registrar` e `finance:create-admin`): o primeiro usuário herda registros sem dono, todos ganham as categorias padrão e o CPF é casado com pessoas já cadastradas.
+- **Vínculo por CPF:** `users.cpf` (único) e `people.cpf` (opcional). Quando o CPF de uma pessoa pertence a outro usuário, `people.linked_user_id` + `link_status` (`pending`/`accepted`/`declined`) representam o convite; o dono do CPF responde em `POST /convites/{person}`. Aceito, ele vê **somente leitura** os lançamentos dessa pessoa (`Transaction::visibleTo()`, `Person::sharedWith()`), inclusive no dashboard. Escritas continuam passando pelo scope `owner` (404 para dados alheios).
+- A planilha do Google pertence a um único usuário (`GOOGLE_SHEETS_OWNER_EMAIL` ou o primeiro cadastrado, `Accounts::sheetOwner()`); só ele vê sincronizações e conflitos em Auditoria.
 
 ### Invariantes do domínio
 
@@ -51,4 +58,4 @@ O `finance:import-legacy` gera UUIDs determinísticos a partir do número da lin
 
 ## Configuração
 
-Variáveis do Google em `config/services.php` (`GOOGLE_SHEETS_ID`, `GOOGLE_SHEETS_TAB`, `GOOGLE_APPLICATION_CREDENTIALS`). O JSON da conta de serviço fica em `storage/app/` (ignorado pelo git). Sessão, cache e fila usam o driver `database`.
+Variáveis do Google em `config/services.php` (`GOOGLE_SHEETS_ID`, `GOOGLE_SHEETS_TAB`, `GOOGLE_SHEETS_OWNER_EMAIL`, `GOOGLE_APPLICATION_CREDENTIALS`). O JSON da conta de serviço fica em `storage/app/` (ignorado pelo git). Sessão, cache e fila usam o driver `database`.
