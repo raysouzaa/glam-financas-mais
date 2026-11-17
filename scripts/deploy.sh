@@ -20,7 +20,7 @@ echo "==> Código: $antes → $depois"
 
 echo "==> Backup do banco"
 docker compose up -d db
-scripts/backup.sh
+bash scripts/backup.sh
 
 echo "==> Build"
 docker compose build --quiet
