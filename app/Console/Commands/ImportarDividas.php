@@ -1,7 +1,7 @@
 <?php
 namespace App\Console\Commands;
 
-use App\Models\{Category,CreditCard};
+use App\Models\{Category,CreditCard,User};
 use App\Services\{CardDebtImporter,CardDebtParser,XlsxReader};
 use Illuminate\Console\Command;
 
@@ -12,6 +12,7 @@ class ImportarDividas extends Command
         {arquivo : caminho do .xlsx (dentro do container, ex.: storage/app/Dividas.xlsx)}
         {--cartao= : nome do cartão cadastrado (opcional)}
         {--categoria= : nome da categoria de despesa (opcional)}
+        {--usuario= : e-mail da conta que recebe as compras (padrão: admin mais antigo)}
         {--simular : só mostra o que seria importado}';
     protected $description = 'Importa a planilha de dívidas do cartão (aba Lançamentos); compras já importadas são puladas';
 
@@ -20,13 +21,16 @@ class ImportarDividas extends Command
         $path = $this->argument('arquivo');
         if (!is_readable($path)) { $this->error("Arquivo não encontrado: {$path}"); return self::FAILURE; }
 
+        $dono = User::donoPadrao($this->option('usuario'));
+        if (!$dono) { $this->error('Conta de destino não encontrada.'); return self::FAILURE; }
+
         $card = $category = null;
         if ($name = $this->option('cartao')) {
-            $card = CreditCard::get()->first(fn($c) => XlsxReader::key($c->name) === XlsxReader::key($name));
+            $card = CreditCard::where('user_id', $dono->id)->get()->first(fn($c) => XlsxReader::key($c->name) === XlsxReader::key($name));
             if (!$card) { $this->error("Cartão \"{$name}\" não encontrado."); return self::FAILURE; }
         }
         if ($name = $this->option('categoria')) {
-            $category = Category::where('type', 'expense')->get()->first(fn($c) => XlsxReader::key($c->name) === XlsxReader::key($name));
+            $category = Category::where('user_id', $dono->id)->where('type', 'expense')->get()->first(fn($c) => XlsxReader::key($c->name) === XlsxReader::key($name));
             if (!$category) { $this->error("Categoria de despesa \"{$name}\" não encontrada."); return self::FAILURE; }
         }
 
@@ -46,7 +50,7 @@ class ImportarDividas extends Command
         if ($this->option('simular')) return self::SUCCESS;
         if (!$new) { $this->info('Nada novo para importar.'); return self::SUCCESS; }
 
-        $r = $importer->import($sheet, basename($path), hash_file('sha256', $path), $card?->id, $category?->id, null);
+        $r = $importer->import($sheet, basename($path), hash_file('sha256', $path), $card?->id, $category?->id, (int) $dono->id);
         $this->info("Importação {$r['id']}: {$r['created']} compra(s) criada(s), ".$brl($r['total_cents'])."; {$r['skipped']} pulada(s).");
 
         return self::SUCCESS;

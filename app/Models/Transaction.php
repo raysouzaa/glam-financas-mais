@@ -5,8 +5,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 class Transaction extends Model {
  use HasUuids,SoftDeletes;
- protected $fillable=['person_id','category_id','financial_account_id','credit_card_id','type','payment_method','description','amount_cents','installments_count','start_month','notes','origin'];
+ protected $fillable=['user_id','person_id','category_id','financial_account_id','credit_card_id','type','payment_method','description','amount_cents','installments_count','start_month','notes','origin'];
  protected function casts():array{return ['start_month'=>'date:Y-m-d','amount_cents'=>'integer','installments_count'=>'integer'];}
+ /** Conta que cadastrou o lançamento (só ela pode alterar). */
+ public function owner(){return $this->belongsTo(User::class,'user_id');}
  public function person(){return $this->belongsTo(Person::class);}
  public function category(){return $this->belongsTo(Category::class);}
  public function creditCard(){return $this->belongsTo(CreditCard::class);}

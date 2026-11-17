@@ -7,7 +7,7 @@ return [
  'password_timeout'=>10800,
  // Validade (minutos) do link do e-mail de confirmação de conta.
  'verification'=>['expire'=>(int)env('EMAIL_VERIFICATION_EXPIRE',60)],
- // Criação de conta pela tela "Criar conta". Atenção: todas as contas veem os mesmos dados financeiros.
+ // Criação de conta pela tela "Criar conta". Cada conta tem o próprio financeiro.
  // REGISTRATION_ALLOWED_EMAILS (opcional): lista separada por vírgula; vazia = qualquer e-mail pode se cadastrar.
  // Conta administradora criada pelo AdminSeeder (php artisan db:seed). Senha vazia = gera uma aleatória e mostra no terminal.
  'admin'=>['email'=>env('ADMIN_EMAIL'),'name'=>env('ADMIN_NAME','Administrador'),'password'=>env('ADMIN_PASSWORD')],

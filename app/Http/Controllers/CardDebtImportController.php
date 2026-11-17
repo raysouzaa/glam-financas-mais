@@ -27,6 +27,7 @@ class CardDebtImportController
             ->leftJoin('credit_cards as c', 'c.id', '=', 'i.credit_card_id')
             ->leftJoin('users as u', 'u.id', '=', 'i.user_id')
             ->select('i.*', 'c.name as card_name', 'u.name as user_name')
+            ->where('i.user_id', auth()->id())
             ->orderByDesc('i.created_at')->get();
         $paid = DB::table('card_debt_import_items as it')
             ->join('installments as p', 'p.transaction_id', '=', 'it.transaction_id')
@@ -38,8 +39,8 @@ class CardDebtImportController
         return Inertia::render('CardDebts', [
             'imports' => $imports,
             'preview' => $this->previewData($parser),
-            'cards' => CreditCard::orderBy('name')->get(['id', 'name', 'last_four']),
-            'categories' => Category::where('type', 'expense')->orderBy('name')->get(['id', 'name']),
+            'cards' => CreditCard::where('user_id', auth()->id())->orderBy('name')->get(['id', 'name', 'last_four']),
+            'categories' => Category::where('user_id', auth()->id())->where('type', 'expense')->orderBy('name')->get(['id', 'name']),
             'defaults' => ['credit_card_id' => $last?->credit_card_id, 'category_id' => $last?->category_id],
         ]);
     }
@@ -81,8 +82,8 @@ class CardDebtImportController
         }
         $data = $request->validate([
             'hash' => 'required|string|size:64',
-            'credit_card_id' => ['nullable', Rule::exists('credit_cards', 'id')->whereNull('deleted_at')],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('type', 'expense')->whereNull('deleted_at')],
+            'credit_card_id' => ['nullable', Rule::exists('credit_cards', 'id')->where('user_id', auth()->id())->whereNull('deleted_at')],
+            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', auth()->id())->where('type', 'expense')->whereNull('deleted_at')],
         ]);
         if (!hash_equals($pending['hash'], $data['hash'])) {
             return back()->withErrors(['file' => 'A prévia mudou. Confira os dados e confirme novamente.']);
@@ -103,7 +104,7 @@ class CardDebtImportController
 
     public function destroy(string $id)
     {
-        $import = DB::table('card_debt_imports')->where('id', $id)->first();
+        $import = DB::table('card_debt_imports')->where('id', $id)->where('user_id', auth()->id())->first();
         abort_unless($import, 404);
         $ids = DB::table('card_debt_import_items')->where('card_debt_import_id', $id)->pluck('transaction_id');
         if (DB::table('installments')->whereIn('transaction_id', $ids)->where('paid', true)->exists()) {
@@ -139,7 +140,7 @@ class CardDebtImportController
         $trashed = Transaction::onlyTrashed()->whereIn('id', array_column($sheet['rows'], 'id'))->pluck('id')->flip();
         $importer = app(CardDebtImporter::class);
         $existing = $importer->existingIds(array_column($sheet['rows'], 'id'));
-        $known = $importer->peopleByKey();
+        $known = $importer->peopleByKey((int) auth()->id());
         $newPeople = [];
         $byPerson = [];
         $byMonth = [];

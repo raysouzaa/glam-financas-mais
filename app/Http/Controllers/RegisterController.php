@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Audit;
+use App\Support\CategoriasPadrao;
 use App\Support\Cpf;
 use App\Support\RegraSenha;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class RegisterController
         $data = $request->validate([
             'name' => 'required|string|min:3|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            // O CPF faz o de-para com o cadastro de Pessoas: o usuário vê as dívidas da pessoa com o mesmo CPF.
+            // O CPF liga a conta às Pessoas que outros usuários cadastrarem com ele (vínculo aceito no perfil).
             'cpf' => ['required', 'unique:users,cpf', function (string $attr, mixed $value, \Closure $fail) {
                 if (! Cpf::valido((string) $value)) $fail('Informe um CPF válido.');
             }],
@@ -62,6 +63,7 @@ class RegisterController
 
         $user = DB::transaction(function () use ($data) {
             $user = User::create(['name' => trim($data['name']), 'email' => $data['email'], 'cpf' => $data['cpf'], 'password' => $data['password']]);
+            CategoriasPadrao::criarPara((int) $user->id);
             Audit::write('register', 'users', (string) $user->id, null, ['name' => $user->name, 'email' => $user->email, 'cpf' => Cpf::mascarar($user->cpf)]);
 
             return $user;

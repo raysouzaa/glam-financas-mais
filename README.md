@@ -46,7 +46,7 @@ Pelo terminal (mesmo processo): copie a planilha para `storage/app/` e rode `doc
 
 Na tela de login há o botão **Criar conta** (nome completo, e-mail e senha com no mínimo 6 caracteres, contendo uma letra maiúscula, uma minúscula e um número). Depois do cadastro o app envia um e-mail com o link de confirmação (vale 60 minutos); só depois de confirmar é possível entrar. Na tela de login aparece "Reenviar e-mail de confirmação" se a conta ainda não foi confirmada. Contas criadas pelo `finance:create-admin` já nascem confirmadas.
 
-**Atenção:** o app não separa dados por usuário. Toda conta criada vê e altera os mesmos lançamentos. Para limitar quem pode se cadastrar, use no `.env`:
+Cada conta tem o próprio financeiro (lançamentos, pessoas, categorias, contas e cartões) e não vê o das outras. A exceção é o vínculo por CPF: se você cadastra uma Pessoa com o CPF de alguém que tem conta, essa pessoa recebe um pedido em **Meu perfil** e, aceitando, passa a ver (somente leitura) o que você lançar para ela. Ela pode remover o vínculo quando quiser, sem afetar os seus dados. Para limitar quem pode se cadastrar, use no `.env`:
 
 - `REGISTRATION_ENABLED=false` desliga a tela de criar conta;
 - `REGISTRATION_ALLOWED_EMAILS=voce@exemplo.com,outra@exemplo.com` aceita só esses e-mails.

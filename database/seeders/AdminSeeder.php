@@ -46,6 +46,7 @@ class AdminSeeder extends Seeder
 
         $user = User::create(['email' => $email, 'name' => (string) config('auth.admin.name', 'Administrador'), 'password' => $password]);
         $user->forceFill(['is_admin' => true, 'email_verified_at' => now()])->save();
+        \App\Support\CategoriasPadrao::criarPara((int) $user->id);
         Audit::write('create', 'users', (string) $user->id, null, ['email' => $email, 'is_admin' => true], 'system');
 
         $this->command?->info("AdminSeeder: conta administradora criada para {$email}.");
