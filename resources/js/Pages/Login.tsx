@@ -1,7 +1,7 @@
 import React from 'react';
 import {Link, router, useForm, usePage} from '@inertiajs/react';
 import {MailCheck, RefreshCw, UserPlus} from 'lucide-react';
-import AuthCard from '../Components/AuthCard';
+import AuthCard, {PasswordInput} from '../Components/AuthCard';
 
 type Verify = {name?: string; email: string; minutes?: number};
 
@@ -62,8 +62,11 @@ export default function Login() {
       {verify && <VerifyNotice verify={verify} onResend={resend} resending={resending} onClose={() => { setVerify(null); f.reset(); }}/>}
       <label htmlFor="email" className="block text-sm font-semibold mb-2">E-mail</label>
       <input id="email" className="field mb-4" type="email" required autoComplete="email" value={f.data.email} onChange={e => f.setData('email', e.target.value)}/>
-      <label htmlFor="password" className="block text-sm font-semibold mb-2">Senha</label>
-      <input id="password" className="field mb-2" type="password" required autoComplete="current-password" value={f.data.password} onChange={e => f.setData('password', e.target.value)}/>
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor="password" className="block text-sm font-semibold">Senha</label>
+        <Link href="/esqueci-senha" className="text-sm font-semibold text-brand-700 hover:text-brand-900">Esqueci minha senha</Link>
+      </div>
+      <PasswordInput id="password" className="mb-2" autoComplete="current-password" value={f.data.password} onChange={e => f.setData('password', e.target.value)}/>
       {errors.email && <p className="text-red-600 text-sm my-2">{errors.email}</p>}
       <button className="btn-primary w-full mt-5" disabled={f.processing}>Entrar no sistema</button>
       {registrationEnabled && (

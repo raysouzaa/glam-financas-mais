@@ -7,4 +7,6 @@ import Manage from './Pages/Manage';
 import Audit from './Pages/Audit';
 import Register from './Pages/Register';
 import CardDebts from './Pages/CardDebts';
-createInertiaApp({resolve:(name)=>({Dashboard,Login,Manage,Audit,Register,CardDebts} as Record<string,any>)[name],setup({el,App,props}){createRoot(el).render(<App {...props}/>);},progress:{color:'#1e4fd8'}});
+import ForgotPassword from './Pages/ForgotPassword';
+import ResetPassword from './Pages/ResetPassword';
+createInertiaApp({resolve:(name)=>({Dashboard,Login,Manage,Audit,Register,CardDebts,ForgotPassword,ResetPassword} as Record<string,any>)[name],setup({el,App,props}){createRoot(el).render(<App {...props}/>);},progress:{color:'#1e4fd8'}});

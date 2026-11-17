@@ -2,6 +2,7 @@
 namespace App\Models;
 
 use App\Notifications\ConfirmarConta;
+use App\Notifications\RedefinirSenha;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,5 +28,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sendEmailVerificationNotification(): void
     {
         $this->notify(new ConfirmarConta);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new RedefinirSenha($token));
     }
 }

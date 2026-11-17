@@ -1,7 +1,7 @@
 import React from 'react';
 import {Link, useForm} from '@inertiajs/react';
-import {ArrowLeft, Eye, EyeOff} from 'lucide-react';
-import AuthCard, {FieldError} from '../Components/AuthCard';
+import {ArrowLeft} from 'lucide-react';
+import AuthCard, {FieldError, PasswordInput, REQUISITOS_SENHA, RequisitosSenha} from '../Components/AuthCard';
 import {formatCpf} from '../Components/Shell';
 
 // Mesma conta de app/Support/Cpf.php (o servidor confere de novo).
@@ -16,18 +16,8 @@ const cpfValido = (v: string) => {
   return true;
 };
 
-// Mesmos requisitos de app/Support/RegraSenha.php (o servidor sempre confere de novo).
-const MIN = 6;
-const REQUISITOS: {texto: string; ok: (s: string) => boolean}[] = [
-  {texto: `Pelo menos ${MIN} caracteres`, ok: s => [...s].length >= MIN},
-  {texto: 'Uma letra maiúscula', ok: s => /\p{Lu}/u.test(s)},
-  {texto: 'Uma letra minúscula', ok: s => /\p{Ll}/u.test(s)},
-  {texto: 'Um número', ok: s => /\d/.test(s)},
-];
-
 export default function Register() {
   const f = useForm({name: '', email: '', cpf: '', password: '', password_confirmation: ''});
-  const [show, setShow] = React.useState(false);
   const [local, setLocal] = React.useState<Record<string, string>>({});
   const errors = {...f.errors, ...local} as Record<string, string | undefined>;
 
@@ -37,7 +27,7 @@ export default function Register() {
     if (f.data.name.trim().length < 3) v.name = 'Informe seu nome completo.';
     if (!/^\S+@\S+\.\S+$/.test(f.data.email.trim())) v.email = 'Informe um e-mail válido.';
     if (!cpfValido(f.data.cpf)) v.cpf = 'Informe um CPF válido.';
-    if (REQUISITOS.some(r => !r.ok(f.data.password))) v.password = 'A senha ainda não cumpre todos os requisitos acima.';
+    if (REQUISITOS_SENHA.some(r => !r.ok(f.data.password))) v.password = 'A senha ainda não cumpre todos os requisitos acima.';
     else if (f.data.password !== f.data.password_confirmation) v.password_confirmation = 'As senhas não conferem.';
     setLocal(v);
     if (Object.keys(v).length) return;
@@ -65,22 +55,12 @@ export default function Register() {
       <FieldError message={errors.cpf}/>
 
       <label htmlFor="password" className="block text-sm font-semibold mb-2">Senha</label>
-      <div className="relative mb-1">
-        <input id="password" className="field pr-11" type={show ? 'text' : 'password'} autoComplete="new-password" value={f.data.password} onChange={set('password')}/>
-        <button type="button" className="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-600" onClick={() => setShow(s => !s)} aria-label={show ? 'Ocultar senha' : 'Mostrar senha'}>
-          {show ? <EyeOff size={18}/> : <Eye size={18}/>}
-        </button>
-      </div>
-      <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2 mb-4" aria-label="Requisitos da senha">
-        {REQUISITOS.map(r => {
-          const ok = r.ok(f.data.password);
-          return <li key={r.texto} className={ok ? 'text-emerald-600' : 'text-slate-400'}>{ok ? '✓' : '○'} {r.texto}</li>;
-        })}
-      </ul>
+      <PasswordInput id="password" className="mb-1" autoComplete="new-password" value={f.data.password} onChange={set('password')}/>
+      <RequisitosSenha senha={f.data.password}/>
       <FieldError message={errors.password}/>
 
       <label htmlFor="password_confirmation" className="block text-sm font-semibold mb-2">Confirme a senha</label>
-      <input id="password_confirmation" className="field mb-4" type={show ? 'text' : 'password'} autoComplete="new-password" value={f.data.password_confirmation} onChange={set('password_confirmation')}/>
+      <PasswordInput id="password_confirmation" autoComplete="new-password" value={f.data.password_confirmation} onChange={set('password_confirmation')}/>
       <FieldError message={errors.password_confirmation}/>
 
       <button className="btn-primary w-full mt-2" disabled={f.processing}>{f.processing ? 'Criando conta…' : 'Criar conta'}</button>

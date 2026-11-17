@@ -1,9 +1,16 @@
 <?php
-use App\Http\Controllers\{AuthController,FinanceController,RegisterController,CardDebtImportController};
+use App\Http\Controllers\{AuthController,FinanceController,RegisterController,CardDebtImportController,PasswordResetController};
 use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function(){
  Route::get('/login',[AuthController::class,'loginPage'])->name('login');Route::post('/login',[AuthController::class,'login'])->middleware('throttle:5,1');
  Route::get('/criar-conta',[RegisterController::class,'page'])->name('register');Route::post('/criar-conta',[RegisterController::class,'store'])->middleware('throttle:5,1');
+ // Esqueci minha senha: identifica por e-mail ou CPF (com CPF, a pessoa confirma o e-mail antes do envio).
+ Route::get('/esqueci-senha',[PasswordResetController::class,'page'])->name('password.request');
+ Route::post('/esqueci-senha',[PasswordResetController::class,'identify'])->middleware('throttle:5,1')->name('password.email');
+ Route::post('/esqueci-senha/confirmar',[PasswordResetController::class,'confirm'])->middleware('throttle:5,1')->name('password.confirm-email');
+ Route::post('/esqueci-senha/cancelar',[PasswordResetController::class,'cancel'])->name('password.cancel');
+ Route::get('/redefinir-senha/{token}',[PasswordResetController::class,'resetPage'])->name('password.reset');
+ Route::post('/redefinir-senha',[PasswordResetController::class,'reset'])->middleware('throttle:5,1')->name('password.update');
  Route::post('/email/reenviar',[RegisterController::class,'resend'])->middleware('throttle:3,1')->name('verification.send');
 });
 // Link do e-mail de confirmação: assinado e com validade (a assinatura é conferida no controller).
