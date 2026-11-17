@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('finance:sync-sheets')->everyMinute()->withoutOverlapping();
+        // Desligada enquanto GOOGLE_SHEETS_SYNC_ENABLED não for true (o comando manual continua funcionando).
+        $schedule->command('finance:sync-sheets')->everyMinute()->withoutOverlapping()->when(fn () => config('services.google_sheets.sync_enabled'));
     })
     ->create();
