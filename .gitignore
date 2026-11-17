@@ -3,5 +3,10 @@
 /public/build
 /.env
 /storage/app/*.json
-/storage/logs/*.log
+/storage/logs/
+/storage/framework/
 /.phpunit.result.cache
+/backups
+/.env.bak-*
+*:Zone.Identifier
+/storage/app/private/

@@ -1,4 +1,4 @@
-# Finança+ — Laravel + React/Inertia + PostgreSQL + Google Sheets
+# GlamFinanças — Laravel + React/Inertia + PostgreSQL + Google Sheets
 
 Aplicação web em português, responsiva, sem API Node separada. Esta é uma **versão inicial de desenvolvimento**; não foi conectada nem executada contra sua conta Google nesta entrega.
 
@@ -34,7 +34,29 @@ docker compose up -d worker scheduler
 docker compose exec app php artisan finance:create-admin seu-email@exemplo.com "Seu nome"
 ```
 
-Acesse: **http://localhost:8088**. Sem registro público: novas contas de acesso são criadas pelo comando interativo.
+Acesse: **http://localhost:8088**.
+
+### Importar dívidas do cartão
+
+Menu **Importar dívidas** (só para administradores; `finance:admin email` concede o acesso). Envie a planilha `.xlsx` com a aba "Lançamentos" (Pessoa, Descrição, Valor Total da Compra, Parcelas, Mês Início). A prévia mostra as compras, os totais por pessoa e as parcelas por mês antes de gravar qualquer coisa; ao confirmar, cada compra vira uma despesa no cartão já dividida em parcelas. Dá para escolher o cartão e a categoria. Reenviar a planilha depois de acrescentar compras importa só as novas. Uma importação pode ser desfeita enquanto nenhuma parcela estiver marcada como paga.
+
+Pelo terminal (mesmo processo): copie a planilha para `storage/app/` e rode `docker compose exec -u www-data app php artisan finance:importar-dividas storage/app/ARQUIVO.xlsx [--cartao="Nome"] [--categoria="Nome"] [--simular]`.
+
+### Criar conta pela tela
+
+Na tela de login há o botão **Criar conta** (nome completo, e-mail e senha com no mínimo 6 caracteres, contendo uma letra maiúscula, uma minúscula e um número). Depois do cadastro o app envia um e-mail com o link de confirmação (vale 60 minutos); só depois de confirmar é possível entrar. Na tela de login aparece "Reenviar e-mail de confirmação" se a conta ainda não foi confirmada. Contas criadas pelo `finance:create-admin` já nascem confirmadas.
+
+**Atenção:** o app não separa dados por usuário. Toda conta criada vê e altera os mesmos lançamentos. Para limitar quem pode se cadastrar, use no `.env`:
+
+- `REGISTRATION_ENABLED=false` desliga a tela de criar conta;
+- `REGISTRATION_ALLOWED_EMAILS=voce@exemplo.com,outra@exemplo.com` aceita só esses e-mails.
+
+**E-mail em desenvolvimento:** o serviço `mailpit` captura todos os e-mails enviados (nada chega a caixas reais). Veja-os em **http://localhost:8025**. Para entregar de verdade, rode `scripts/configurar-email.sh`: ele pede o provedor, o remetente e a senha/chave, grava no `.env`, reinicia `app` e `worker` e manda um e-mail de teste.
+
+- **Resend (grátis até ~3.000 e-mails/mês, com domínio próprio, ex.: `nao-responda@vyrasolutions.com.br`):** crie a conta em resend.com, adicione o domínio em *Domains* e copie os registros DNS que ele mostrar para o Cloudflare (DNS → Records, com a nuvem cinza, "DNS only"). Quando o domínio aparecer como *Verified*, crie uma API key (*API Keys*, permissão "Sending access") e rode `scripts/configurar-email.sh resend`.
+- **Gmail:** ligue a verificação em 2 etapas e crie uma senha de app em https://myaccount.google.com/apppasswords.
+
+Para testar o envio a qualquer momento: `docker compose exec app php artisan finance:testar-email voce@exemplo.com`.
 
 **Observação:** para a primeira carga, rode as migrations antes de liberar o worker/scheduler se você já ativou a integração do Google.
 

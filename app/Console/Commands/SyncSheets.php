@@ -5,7 +5,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 class SyncSheets extends Command {
- protected $signature='finance:sync-sheets';protected $description='Sincroniza a aba Finança+ com o PostgreSQL';
+ protected $signature='finance:sync-sheets';protected $description='Sincroniza a aba do GlamFinanças com o PostgreSQL';
  public function handle():int{
   if(!config('services.google_sheets.spreadsheet_id')){$this->warn('GOOGLE_SHEETS_ID não configurado; sincronização desativada.');return self::SUCCESS;}
   $lock=Cache::lock('financa-sync-lock',120);if(!$lock->get())return self::SUCCESS;

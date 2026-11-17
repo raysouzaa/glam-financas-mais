@@ -1,0 +1,20 @@
+# Ajustes de produção, aplicados por cima do compose.yaml.
+# No servidor o .env define COMPOSE_FILE=compose.yaml:compose.prod.yaml,
+# então basta usar `docker compose ...` normalmente.
+#
+# Os mem_limit são tetos de memória: o servidor é compartilhado com outros
+# projetos, e um pico aqui não pode derrubar os vizinhos.
+services:
+  app:
+    # Só o proxy reverso do próprio servidor (Caddy) alcança a aplicação.
+    ports: !override ["127.0.0.1:8088:80"]
+    mem_limit: 512m
+  worker:
+    mem_limit: 256m
+  scheduler:
+    mem_limit: 192m
+  db:
+    mem_limit: 512m
+  mailpit:
+    # Capturador de e-mails de desenvolvimento; não sobe em produção.
+    profiles: ["dev"]

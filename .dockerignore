@@ -5,3 +5,9 @@ vendor
 storage/logs/*
 storage/app/*.json
 storage/framework/cache/*
+backups
+.env.bak-*
+*:Zone.Identifier
+storage/app/private
+storage/framework/sessions/*
+storage/framework/views/*

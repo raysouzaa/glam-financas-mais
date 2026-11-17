@@ -5,4 +5,6 @@ import Dashboard from './Pages/Dashboard';
 import Login from './Pages/Login';
 import Manage from './Pages/Manage';
 import Audit from './Pages/Audit';
-createInertiaApp({resolve:(name)=>({Dashboard,Login,Manage,Audit} as Record<string,any>)[name],setup({el,App,props}){createRoot(el).render(<App {...props}/>);},progress:{color:'#2d7abe'}});
+import Register from './Pages/Register';
+import CardDebts from './Pages/CardDebts';
+createInertiaApp({resolve:(name)=>({Dashboard,Login,Manage,Audit,Register,CardDebts} as Record<string,any>)[name],setup({el,App,props}){createRoot(el).render(<App {...props}/>);},progress:{color:'#1e4fd8'}});
