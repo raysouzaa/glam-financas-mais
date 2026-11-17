@@ -112,13 +112,25 @@ Os dumps ficam em `backups/` (os 14 mais recentes). Copie-os periodicamente para
 
 ## Atualizar depois
 
+**Automático:** todo push no `main` publica em produção pelo GitHub Actions ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)). O andamento aparece na aba *Actions* do repositório; também dá para disparar à mão por lá (*Run workflow*).
+
+**Manual**, no servidor (é o mesmo script que a pipeline roda):
+
 ```bash
-cd /var/www/html/financas-plus
-git pull
-docker compose build
-docker compose up -d --force-recreate app worker scheduler
-docker compose exec app php artisan migrate --force
+cd /var/www/html/financas-plus && scripts/deploy.sh
 ```
+
+O script faz backup do banco, `git pull`, build, recria `app`, `worker` e `scheduler`, roda as migrations e confere `/up`. Se o build falhar, os contêineres antigos continuam no ar. Mudanças no `.env` não passam pelo git: edite o arquivo no servidor e rode o script.
+
+### Como a pipeline entra no servidor
+
+O GitHub usa uma chave SSH própria, que no `~/.ssh/authorized_keys` do servidor tem comando forçado: com ela só é possível rodar `scripts/deploy.sh`, sem terminal nem encaminhamento de portas.
+
+```
+command="/var/www/html/financas-plus/scripts/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... glamfinancas-deploy
+```
+
+Segredos em *Settings → Secrets and variables → Actions*: `DEPLOY_SSH_KEY` (chave privada), `DEPLOY_HOST`, `DEPLOY_USER` e `DEPLOY_KNOWN_HOSTS` (saída de `ssh-keyscan -t ed25519 <servidor>`). Sem eles a pipeline só registra um aviso e não publica nada. Para desligar o deploy automático, apague a linha da chave no `authorized_keys`.
 
 ## Restaurar um backup em um banco que já tem dados
 
