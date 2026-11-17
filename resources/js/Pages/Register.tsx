@@ -2,6 +2,19 @@ import React from 'react';
 import {Link, useForm} from '@inertiajs/react';
 import {ArrowLeft, Eye, EyeOff} from 'lucide-react';
 import AuthCard, {FieldError} from '../Components/AuthCard';
+import {formatCpf} from '../Components/Shell';
+
+// Mesma conta de app/Support/Cpf.php (o servidor confere de novo).
+const cpfValido = (v: string) => {
+  const c = v.replace(/\D/g, '');
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  for (let t = 9; t < 11; t++) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(c[i]) * (t + 1 - i);
+    if (Number(c[t]) !== ((10 * soma) % 11) % 10) return false;
+  }
+  return true;
+};
 
 // Mesmos requisitos de app/Support/RegraSenha.php (o servidor sempre confere de novo).
 const MIN = 6;
@@ -13,7 +26,7 @@ const REQUISITOS: {texto: string; ok: (s: string) => boolean}[] = [
 ];
 
 export default function Register() {
-  const f = useForm({name: '', email: '', password: '', password_confirmation: ''});
+  const f = useForm({name: '', email: '', cpf: '', password: '', password_confirmation: ''});
   const [show, setShow] = React.useState(false);
   const [local, setLocal] = React.useState<Record<string, string>>({});
   const errors = {...f.errors, ...local} as Record<string, string | undefined>;
@@ -23,6 +36,7 @@ export default function Register() {
     const v: Record<string, string> = {};
     if (f.data.name.trim().length < 3) v.name = 'Informe seu nome completo.';
     if (!/^\S+@\S+\.\S+$/.test(f.data.email.trim())) v.email = 'Informe um e-mail válido.';
+    if (!cpfValido(f.data.cpf)) v.cpf = 'Informe um CPF válido.';
     if (REQUISITOS.some(r => !r.ok(f.data.password))) v.password = 'A senha ainda não cumpre todos os requisitos acima.';
     else if (f.data.password !== f.data.password_confirmation) v.password_confirmation = 'As senhas não conferem.';
     setLocal(v);
@@ -44,6 +58,11 @@ export default function Register() {
       <label htmlFor="email" className="block text-sm font-semibold mb-2">E-mail</label>
       <input id="email" className="field mb-4" type="email" autoComplete="email" value={f.data.email} onChange={set('email')}/>
       <FieldError message={errors.email}/>
+
+      <label htmlFor="cpf" className="block text-sm font-semibold mb-2">CPF</label>
+      <input id="cpf" className="field mb-1" type="text" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={formatCpf(f.data.cpf)} onChange={e => { f.setData('cpf', e.target.value.replace(/\D/g, '').slice(0, 11)); if (local.cpf) setLocal(({cpf: _, ...rest}) => rest); }}/>
+      <p className="text-xs text-slate-400 mb-4">Usamos o CPF para vincular sua conta às suas dívidas cadastradas.</p>
+      <FieldError message={errors.cpf}/>
 
       <label htmlFor="password" className="block text-sm font-semibold mb-2">Senha</label>
       <div className="relative mb-1">

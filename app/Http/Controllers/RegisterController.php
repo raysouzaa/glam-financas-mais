@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Audit;
+use App\Support\Cpf;
 use App\Support\RegraSenha;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,10 +29,14 @@ class RegisterController
     {
         abort_unless(config('auth.registration.enabled'), 404);
 
-        $request->merge(['email' => Str::lower(trim((string) $request->input('email')))]);
+        $request->merge(['email' => Str::lower(trim((string) $request->input('email'))), 'cpf' => Cpf::normalizar($request->input('cpf'))]);
         $data = $request->validate([
             'name' => 'required|string|min:3|max:255',
             'email' => 'required|email|max:255|unique:users,email',
+            // O CPF faz o de-para com o cadastro de Pessoas: o usuário vê as dívidas da pessoa com o mesmo CPF.
+            'cpf' => ['required', 'unique:users,cpf', function (string $attr, mixed $value, \Closure $fail) {
+                if (! Cpf::valido((string) $value)) $fail('Informe um CPF válido.');
+            }],
             'password' => ['required', 'string', 'max:255', 'confirmed', function (string $attr, mixed $value, \Closure $fail) {
                 if ($erros = RegraSenha::erros((string) $value)) $fail(RegraSenha::mensagem($erros));
             }],
@@ -43,6 +48,8 @@ class RegisterController
             'email.email' => 'Informe um e-mail válido.',
             'email.max' => 'O e-mail pode ter no máximo 255 caracteres.',
             'email.unique' => 'Já existe uma conta com este e-mail.',
+            'cpf.required' => 'Informe seu CPF.',
+            'cpf.unique' => 'Já existe uma conta com este CPF.',
             'password.required' => 'Crie uma senha.',
             'password.max' => 'A senha pode ter no máximo 255 caracteres.',
             'password.confirmed' => 'As senhas não conferem.',
@@ -54,8 +61,8 @@ class RegisterController
         }
 
         $user = DB::transaction(function () use ($data) {
-            $user = User::create(['name' => trim($data['name']), 'email' => $data['email'], 'password' => $data['password']]);
-            Audit::write('register', 'users', (string) $user->id, null, ['name' => $user->name, 'email' => $user->email]);
+            $user = User::create(['name' => trim($data['name']), 'email' => $data['email'], 'cpf' => $data['cpf'], 'password' => $data['password']]);
+            Audit::write('register', 'users', (string) $user->id, null, ['name' => $user->name, 'email' => $user->email, 'cpf' => Cpf::mascarar($user->cpf)]);
 
             return $user;
         });

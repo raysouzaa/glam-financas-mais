@@ -12,6 +12,8 @@ Route::middleware('auth')->group(function(){
  Route::post('/logout',[AuthController::class,'logout'])->name('logout');
  Route::get('/',[FinanceController::class,'dashboard'])->name('dashboard');
  Route::get('/cadastros',[FinanceController::class,'manage'])->name('manage');
+ // Escrita, cadastros de referência e auditoria: só admin. Usuário comum só consulta as dívidas da pessoa vinculada ao seu CPF.
+ Route::middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function(){
  Route::post('/lancamentos',[FinanceController::class,'storeTransaction'])->name('transactions.store');
  Route::put('/lancamentos/{transaction}',[FinanceController::class,'updateTransaction'])->name('transactions.update');
  Route::delete('/lancamentos/{transaction}',[FinanceController::class,'destroyTransaction'])->name('transactions.destroy');
@@ -20,6 +22,7 @@ Route::middleware('auth')->group(function(){
  Route::put('/cadastros/{kind}/{id}',[FinanceController::class,'updateReference'])->name('references.update');
  Route::delete('/cadastros/{kind}/{id}',[FinanceController::class,'destroyReference'])->name('references.destroy');
  Route::get('/auditoria',[FinanceController::class,'audit'])->name('audit');
+ });
  Route::middleware(\App\Http\Middleware\EnsureAdmin::class)->prefix('/admin/importar-dividas')->name('card-debts.')->group(function(){
   Route::get('/',[CardDebtImportController::class,'index'])->name('index');
   Route::post('/previa',[CardDebtImportController::class,'preview'])->middleware('throttle:20,1')->name('preview');
