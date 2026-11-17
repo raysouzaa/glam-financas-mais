@@ -106,4 +106,6 @@ A importação usa UUID determinístico por número de linha. Evite reordenar as
 
 ## Para produção
 
+O passo a passo de publicação (servidor com Docker, Caddy, envio do dump e backup) está em [DEPLOY.md](DEPLOY.md), e o modelo do `.env` de produção em `.env.producao.example`.
+
 Antes de expor na internet: configurar HTTPS, `APP_DEBUG=false`, backups externos, monitoramento, permissões de usuários, testes end-to-end, políticas de privacidade e avaliação de segurança. O sistema foi gerado como base inicial, não homologado em ambiente real.
