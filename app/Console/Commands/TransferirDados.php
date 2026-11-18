@@ -3,6 +3,7 @@ namespace App\Console\Commands;
 
 use App\Models\{Category,Person,User};
 use App\Services\Audit;
+use App\Support\CategoriasPadrao;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,13 +31,12 @@ class TransferirDados extends Command
         if (! array_sum($contagem)) { $this->info('Nada para transferir.'); return self::SUCCESS; }
         if (! $this->option('sim') && ! $this->confirm("Transferir tudo para {$para->name} ({$para->email})?")) return self::FAILURE;
 
-        try {
-            DB::transaction(function () use ($de, $para, $contagem) {
-                // Nome/CPF de pessoa e nome de categoria são únicos por conta: o que o destino já tem com o
-                // mesmo nome (em geral as categorias padrão, ainda sem uso) sai para dar lugar ao que chega.
-                $this->abrirEspaco(Person::class, $de->id, $para->id, fn ($p) => ['name' => $p->name], 'person_id', 'pessoa');
-                $this->abrirEspaco(Person::class, $de->id, $para->id, fn ($p) => $p->cpf ? ['cpf' => $p->cpf] : null, 'person_id', 'pessoa');
-                $this->abrirEspaco(Category::class, $de->id, $para->id, fn ($c) => ['name' => $c->name, 'type' => $c->type], 'category_id', 'categoria');
+        DB::transaction(function () use ($de, $para, $contagem) {
+                // Nome/CPF de pessoa e nome de categoria são únicos por conta: o que as duas contas têm com o
+                // mesmo nome vira um só registro (o do destino), e os lançamentos que chegam passam a apontar para ele.
+                $this->juntarRepetidos(Person::class, $de->id, $para->id, fn ($p) => ['name' => $p->name], [['transactions', 'person_id']]);
+                $this->juntarRepetidos(Person::class, $de->id, $para->id, fn ($p) => $p->cpf ? ['cpf' => $p->cpf] : null, [['transactions', 'person_id']]);
+                $this->juntarRepetidos(Category::class, $de->id, $para->id, fn ($c) => ['name' => $c->name, 'type' => $c->type], [['transactions', 'category_id'], ['card_debt_imports', 'category_id']]);
 
                 foreach (self::TABELAS as $t) DB::table($t)->where('user_id', $de->id)->update(['user_id' => $para->id]);
 
@@ -45,13 +45,11 @@ class TransferirDados extends Command
                     ->where(fn ($q) => $q->where('user_id', $para->id)->orWhereIn('user_id', DB::table('account_links')->where('owner_user_id', $para->id)->select('user_id')))->delete();
                 DB::table('account_links')->where('owner_user_id', $de->id)->update(['owner_user_id' => $para->id]);
 
+                // A conta de origem continua utilizável: volta a ter as categorias padrão.
+                CategoriasPadrao::criarPara((int) $de->id);
+
                 Audit::write('transfer', 'users', (string) $de->id, ['user_id' => $de->id] + $contagem, ['user_id' => $para->id, 'email' => $para->email], 'system');
             });
-        } catch (\DomainException $e) {
-            $this->error($e->getMessage());
-
-            return self::FAILURE;
-        }
 
         $this->info("Transferido para {$para->name}.");
         if (config('services.google_sheets.spreadsheet_id')) $this->warn("Google Sheets: defina GOOGLE_SHEETS_OWNER_EMAIL={$para->email} no .env para a sincronização acompanhar a nova conta.");
@@ -59,18 +57,19 @@ class TransferirDados extends Command
         return self::SUCCESS;
     }
 
-    /** Apaga do destino o registro que colide com um da origem, desde que nenhum lançamento o use. */
-    private function abrirEspaco(string $model, int $de, int $para, \Closure $chave, string $fk, string $rotulo): void
+    /** Registro da origem que já existe no destino (mesma chave): as referências passam para o do destino e o da origem some. */
+    private function juntarRepetidos(string $model, int $de, int $para, \Closure $chave, array $referencias): void
     {
         foreach ($model::withTrashed()->where('user_id', $de)->get() as $origem) {
             $onde = $chave($origem);
             if (! $onde) continue;
-            foreach ($model::withTrashed()->where('user_id', $para)->where($onde)->get() as $destino) {
-                if (DB::table('transactions')->where($fk, $destino->id)->exists()) {
-                    throw new \DomainException("A conta de destino já usa a {$rotulo} \"{$destino->name}\" em lançamentos. Renomeie-a e rode de novo.");
-                }
-                $destino->forceDelete();
-            }
+            $destino = $model::withTrashed()->where('user_id', $para)->where($onde)->first();
+            if (! $destino) continue;
+            foreach ($referencias as [$tabela, $coluna]) DB::table($tabela)->where($coluna, $origem->id)->update([$coluna => $destino->id]);
+            if ($destino->trashed() && ! $origem->trashed()) $destino->restore();
+            $cpf = $origem->cpf ?? null;
+            $origem->forceDelete();
+            if ($cpf && $model === Person::class && ! $destino->cpf) $destino->forceFill(['cpf' => $cpf])->save();
         }
     }
 }
